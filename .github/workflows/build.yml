@@ -1,0 +1,46 @@
+env:
+  proto_tag: 'v3.25.1'
+  USE_BAZEL_VERSION: '6.4.0'
+name: Conformance Runner
+on: [push]  
+
+jobs:
+  build-conformance-runner:
+    strategy:
+        matrix:
+          os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out protobuf
+      uses: actions/checkout@v3
+      with:
+        repository: protocolbuffers/protobuf
+        ref: ${{ env.proto_tag }}
+        path: protobuf
+    - name: Build runner binary
+      run: bazelisk build conformance/conformance_test_runner
+      working-directory: protobuf
+    - name: Copy binary
+      run: cp bazel-bin/conformance/conformance_test_runner conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
+      working-directory: protobuf
+    - name: Archive binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
+        path: protobuf/conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
+  release-conformance-runner:
+    runs-on: ubuntu-latest
+    needs: build-conformance-runner
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries
+      - name: ls
+        run: ls -lR
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: binaries/**/*
