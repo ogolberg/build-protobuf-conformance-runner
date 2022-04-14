@@ -1,0 +1,28 @@
+env:
+  proto_tag: 'v3.20.0'
+name: Conformance Runner
+on: [push]
+jobs:
+  build-conformance-runner:
+    strategy:
+        matrix:
+          os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Check out protobuf
+      uses: actions/checkout@v3
+      with:
+        repository: protocolbuffers/protobuf
+        ref: ${{ env.proto_tag }}
+        path: protobuf
+    - name: Build runner binary
+      run: bazel build conformance_test_runner
+      working-directory: protobuf
+    - name: Copy binary
+      run: cp bazel-bin/conformance_test_runner .
+      working-directory: protobuf
+    - name: Archive binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
+        path: protobuf/conformance_test_runner
