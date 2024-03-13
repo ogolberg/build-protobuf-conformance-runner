@@ -18,10 +18,10 @@ jobs:
         ref: ${{ env.proto_tag }}
         path: protobuf
     - name: Bazel cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: bazel-cache
-        key: bazel-${{ matrix.os }}-${{ hashFiles('WORKSPACE', 'BUILD.bazel') }}
+        key: bazel-${{ matrix.os }}-${{ hashFiles('protobuf/WORKSPACE', 'protobuf/BUILD.bazel') }}
     - name: Build runner binary
       run: bazelisk --output_base=../bazel-cache build conformance/conformance_test_runner
       working-directory: protobuf
