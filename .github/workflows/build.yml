@@ -17,8 +17,13 @@ jobs:
         repository: protocolbuffers/protobuf
         ref: ${{ env.proto_tag }}
         path: protobuf
+    - name: Bazel cache
+      uses: actions/cache@v2
+      with:
+        path: bazel-cache
+        key: bazel-${{ matrix.os }}-${{ hashFiles('WORKSPACE', 'BUILD.bazel') }}
     - name: Build runner binary
-      run: bazelisk build conformance/conformance_test_runner
+      run: bazelisk --output_base=../bazel-cache build conformance/conformance_test_runner
       working-directory: protobuf
     - name: Copy binary
       run: cp bazel-bin/conformance/conformance_test_runner conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
