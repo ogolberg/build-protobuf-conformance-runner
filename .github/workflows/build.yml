@@ -1,5 +1,5 @@
 env:
-  proto_tag: 'v3.26.1'
+  proto_version: '26.1'
   USE_BAZEL_VERSION: '6.4.0'
 name: Conformance Runner
 on: [push]  
@@ -15,7 +15,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         repository: protocolbuffers/protobuf
-        ref: ${{ env.proto_tag }}
+        ref: v${{ env.proto_version }}
         path: protobuf
     - name: Bazel cache
       uses: actions/cache@v4
@@ -26,13 +26,13 @@ jobs:
       run: bazelisk --output_base=../bazel-cache build conformance/conformance_test_runner
       working-directory: protobuf
     - name: Copy binary
-      run: cp bazel-bin/conformance/conformance_test_runner conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
+      run: cp bazel-bin/conformance/conformance_test_runner conformance_test_runner-${{ matrix.os }}-${{ env.proto_version }}
       working-directory: protobuf
     - name: Archive binary
       uses: actions/upload-artifact@v4
       with:
-        name: conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
-        path: protobuf/conformance_test_runner-${{ matrix.os }}-${{ env.proto_tag }}
+        name: conformance_test_runner-${{ matrix.os }}-${{ env.proto_version }}
+        path: protobuf/conformance_test_runner-${{ matrix.os }}-${{ env.proto_version }}
   release-conformance-runner:
     runs-on: ubuntu-latest
     needs: build-conformance-runner
