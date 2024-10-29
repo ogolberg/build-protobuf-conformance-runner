@@ -1,5 +1,5 @@
 env:
-  proto_version: '28.0'
+  proto_version: '28.3'
   USE_BAZEL_VERSION: '6.4.0'
 name: Conformance Runner
 on: [push]  
