@@ -1,7 +1,5 @@
-env:
-  proto_version: '33.2'
 name: Conformance Runner
-on: [push]  
+on: [push]
 
 jobs:
   build-conformance-runner:
@@ -10,6 +8,10 @@ jobs:
           os: [ubuntu-latest, macos-15-intel, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+    - name: Read protobuf version
+      run: echo "proto_version=$(cat PROTOBUF_VERSION)" >> $GITHUB_ENV
     - name: Check out protobuf
       uses: actions/checkout@v3
       with:
