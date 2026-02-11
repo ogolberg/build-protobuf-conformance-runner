@@ -1,0 +1,38 @@
+name: Tag Release
+
+on:
+  workflow_run:
+    workflows: ["Conformance Runner"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Read protobuf version
+        id: version
+        run: echo "version=$(cat PROTOBUF_VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag exists
+        id: tag_check
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          if git ls-remote --tags origin | grep -q "refs/tags/${version}$"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push tag
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          git tag "$version"
+          git push origin "$version"

@@ -1,0 +1,83 @@
+name: Check for Protobuf Updates
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Read current version
+        id: current
+        run: echo "version=$(cat PROTOBUF_VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Find latest upstream release
+        id: upstream
+        run: |
+          latest=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases \
+            | jq -r '[.[] | select(.prerelease == false) | .tag_name
+                      | select(test("^v[0-9]+\\.[0-9]+$"))]
+                     | map(ltrimstr("v") | split(".") | map(tonumber))
+                     | sort_by(.[0], .[1]) | last
+                     | map(tostring) | join(".")')
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          current="${{ steps.current.outputs.version }}"
+          latest="${{ steps.upstream.outputs.version }}"
+          echo "Current: $current"
+          echo "Latest upstream: $latest"
+          if [ "$current" = "$latest" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            newer=$(printf '%s\n%s\n' "$current" "$latest" | sort -t. -k1,1n -k2,2n | tail -1)
+            if [ "$newer" = "$latest" ] && [ "$newer" != "$current" ]; then
+              echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Check for existing PR
+        if: steps.compare.outputs.up_to_date == 'false'
+        id: existing_pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.upstream.outputs.version }}"
+          pr_count=$(gh pr list --head "protobuf-${version}" --state open --json number --jq 'length')
+          if [ "$pr_count" -gt 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.compare.outputs.up_to_date == 'false' && steps.existing_pr.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.upstream.outputs.version }}"
+          branch="protobuf-${version}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          echo "$version" > PROTOBUF_VERSION
+          git add PROTOBUF_VERSION
+          git commit -m "$version"
+          git push origin "$branch"
+          gh pr create \
+            --title "$version" \
+            --body "Bumps protobuf from ${{ steps.current.outputs.version }} to ${version}." \
+            --head "$branch"
