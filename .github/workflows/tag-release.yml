@@ -1,4 +1,4 @@
-name: Tag Release
+name: Tag and Release
 
 on:
   workflow_run:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  tag:
+  tag-and-release:
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
     permissions:
@@ -36,3 +36,19 @@ jobs:
           version="${{ steps.version.outputs.version }}"
           git tag "$version"
           git push origin "$version"
+
+      - name: Download artifacts
+        if: steps.tag_check.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        if: steps.tag_check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          gh release create "$version" binaries/**/* --title "$version"
